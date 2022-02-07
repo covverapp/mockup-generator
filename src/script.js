@@ -1,134 +1,118 @@
 import "./style.css";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import * as dat from "dat.gui";
-const gui = new dat.GUI();
+import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 
-/**
- * Textures
- */
-const textureLoader = new THREE.TextureLoader();
-const baseMockupTexture = textureLoader.load("shirt.jpg");
-const colorTexture = textureLoader.load("printfile.png");
-const heightTexture = textureLoader.load("map.png");
-const ambientOcclusionTexture = textureLoader.load("map.png");
+function addTextCanvas(text) {
+  var width = 1024,
+    height = 512;
+  var canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  var ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff00f";
+  ctx.fillRect(0, 0, width, height);
+  ctx.font = 64 + 'px " bold';
+  ctx.fillStyle = "#000000";
+  ctx.fillText(text, 10, 60);
+  return canvas;
+}
 
-/**
- * Base
- */
-// Canvas
-const canvas = document.querySelector("canvas.webgl");
-
-// Scene
 const scene = new THREE.Scene();
-
-/**
- * Objects
- */
-
-const material = new THREE.MeshStandardMaterial({ map: colorTexture });
-material.aoMap = ambientOcclusionTexture;
-material.displacementMap = heightTexture;
-material.displacementScale = 0.5;
-material.transparent = true;
-
-gui.add(material, "displacementScale", 0, 1, 0.0001);
-
-const plane = new THREE.Mesh(
-  new THREE.PlaneBufferGeometry(1, 1, 100, 100),
-  material
-);
-scene.add(plane);
-
-const baseMockup = new THREE.Mesh(
-  new THREE.PlaneBufferGeometry(3, 3, 100, 100),
-  new THREE.MeshStandardMaterial({ map: baseMockupTexture })
-);
-scene.add(baseMockup);
-baseMockup.geometry.x = 2;
-baseMockup.geometry.y = 200;
-
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-scene.add(ambientLight);
-
-const pointLight = new THREE.PointLight(0xffffff, 0.5);
-pointLight.position.set(2, 3, 4);
-scene.add(pointLight);
-
-/**
- * Sizes
- */
-const sizes = {
-  width: window.innerWidth,
-  height: window.innerHeight,
-};
-
-window.addEventListener("resize", () => {
-  // Update sizes
-  sizes.width = window.innerWidth;
-  sizes.height = window.innerHeight;
-
-  // Update camera
-  camera.aspect = sizes.width / sizes.height;
-  camera.updateProjectionMatrix();
-
-  // Update renderer
-  renderer.setSize(sizes.width, sizes.height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-});
-
-/**
- * Camera
- */
-// Base camera
+const canvas = document.querySelector("canvas.webgl");
 const camera = new THREE.PerspectiveCamera(
-  100,
-  sizes.width / sizes.height,
-  0.2,
-  100
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
 );
-camera.position.x = 0;
-camera.position.y = 0;
-camera.position.z = 2;
-scene.add(camera);
 
-// Controls
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
+const loader = new STLLoader();
+loader.load(
+  "map.stl",
+  function (geometry) {
+    const mesh = new THREE.Mesh(
+      geometry,
+      new THREE.MeshBasicMaterial({
+        // map: new THREE.CanvasTexture(addTextCanvas("Covver")),
+        map: new THREE.TextureLoader().load("logo.jpeg"),
+      })
+    );
+    scene.add(mesh);
+  },
+  (xhr) => {
+    console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+  },
+  (error) => {
+    console.log(error);
+  }
+);
 
-/**
- * Renderer
- */
 const renderer = new THREE.WebGLRenderer({
-  canvas: canvas,
+  canvas,
+  antialias: true,
+  alpha: true,
 });
-renderer.setSize(sizes.width, sizes.height);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, canvas);
+
+const geometry = new THREE.CylinderGeometry(10, 10, 32, 16);
+const materials = [
+  new THREE.MeshBasicMaterial({
+    map: new THREE.CanvasTexture(addTextCanvas("Covver")),
+  }), // top
+  new THREE.MeshBasicMaterial({ color: "blue" }), // right
+  new THREE.MeshBasicMaterial({ color: "yellow" }), // left
+];
+const cube = new THREE.Mesh(geometry, materials);
+// scene.add(cube);
+
+camera.position.z = 50;
+scene.background = new THREE.Color(0xffffff);
+
+let index = 0;
+
+function animate() {
+  if (index === 0) {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+    /*
+    console.log("WTF");
+    console.log(canvas.toDataURL);
+    const img = canvas.toDataURL("image/png");
+    console.log(img);
+    var png = img.split(",")[1];
+    console.log(png);
+    console.log(
+      convertDataUrlToBlob(img)
+        .text()
+        .then((res) => console.log(res))
+    );
+    */
+
+    controls.update();
+  }
+}
+
+function convertDataUrlToBlob(dataUrl) {
+  const arr = dataUrl.split(",");
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  console.log(u8arr);
+  return new Blob([u8arr], "blah".png, { type: mime });
+}
 
 /**
- * Animate
- */
-const clock = new THREE.Clock();
-
-const tick = () => {
-  const elapsedTime = clock.getElapsedTime();
-
-  // sphere.rotation.y = 0.1 * elapsedTime;
-  // torus.rotation.y = 0.1 * elapsedTime;
-  //   plane.rotation.y = 0.1 * elapsedTime;
-
-  // sphere.rotation.x = 0.15 * elapsedTime;
-  // torus.rotation.x = 0.15 * elapsedTime;
-  //   plane.rotation.x = 0.15 * elapsedTime;
-
-  // Update controls
-  controls.update();
-
-  // Render
-  renderer.render(scene, camera);
-
-  // Call tick again on the next frame
-  window.requestAnimationFrame(tick);
-};
-
-tick();
+fs.writeFileSync("test.png", img, function (err) {
+  if (err) {
+    return console.log("error");
+  }
+});
+*/
+animate();
